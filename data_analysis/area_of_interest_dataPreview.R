@@ -5,10 +5,10 @@ library(stringr)
 library(terra)  # For raster operations
 library(timeseriesTrajectories)
 
-# Set folder where XML files are stored
-xml_folder <- "C:/Users/minat/Downloads/area_of_interest/"
-xml_files <- list.files(xml_folder, pattern = "Annual_NLCD_SpcChg_.*\\.xml$", full.names = TRUE)
-
+#folder path
+xml_folder <- "C:/Users/minat/Downloads/Graphs/area_of_interest/"
+xml_files <- list.files(xml_folder, pattern = "Annual_NLCD_LndCov_.*\\.xml$", full.names = TRUE)
+  
 # Initialize empty data frame to store results
 landcover_data <- data.frame(Year = integer(), SpectralChangeDay = numeric())
 
@@ -16,11 +16,12 @@ landcover_data <- data.frame(Year = integer(), SpectralChangeDay = numeric())
 for (file in xml_files) {
   
   xml_data <- read_xml(file)
-
+  
+  
   # Extract Year from filename
   year <- as.numeric(stringr::str_extract(basename(file), "\\d{4}"))
 
-  # Extract Change Day values from correct XML location
+  # Extract STATISTICS_MEAN from the correct location
   change_days <- as.numeric(xml_text(xml_find_all(xml_data, "//PAMRasterBand/Metadata/MDI[@key='STATISTICS_MEAN']")))
 
   # Ensure valid numeric values
@@ -58,11 +59,10 @@ if (nrow(landcover_data) == 0) {
   tps <- landcover_data$Year
 
   # Define the vertical units
-  vert_units <- "Number of  Spectral_Change"
+  vert_units <- "Number of Spectral Change"
 
   # Call the dataPreview function with better x-axis labels
   dataPreview(raster_obj,
               timepoints = tps,
-              vertunits = vert_units,
-              )   
+              vertunits = vert_units)   
 }
