@@ -1,0 +1,68 @@
+# Load required libraries
+library(xml2)
+library(dplyr)
+library(stringr)
+library(terra)  # For raster operations
+library(timeseriesTrajectories)
+
+# Set folder where XML files are stored
+xml_folder <- "C:/Users/minat/Downloads/area_of_interest/"
+xml_files <- list.files(xml_folder, pattern = "Annual_NLCD_SpcChg_.*\\.xml$", full.names = TRUE)
+
+# Initialize empty data frame to store results
+landcover_data <- data.frame(Year = integer(), SpectralChangeDay = numeric())
+
+# Loop through XML files and extract relevant data
+for (file in xml_files) {
+  
+  xml_data <- read_xml(file)
+
+  # Extract Year from filename
+  year <- as.numeric(stringr::str_extract(basename(file), "\\d{4}"))
+
+  # Extract Change Day values from correct XML location
+  change_days <- as.numeric(xml_text(xml_find_all(xml_data, "//PAMRasterBand/Metadata/MDI[@key='STATISTICS_MEAN']")))
+
+  # Ensure valid numeric values
+  change_days <- change_days[!is.na(change_days) & change_days > 0]
+
+  # Skip files with no valid change day values
+  if (length(change_days) == 0) next
+
+  # Store the mean change day for the given year (aggregating values)
+  mean_change_day <- mean(change_days, na.rm = TRUE)
+  
+  # Append results
+  landcover_data <- bind_rows(landcover_data, data.frame(Year = year, SpectralChangeDay = mean_change_day))
+}
+
+# Remove NA values
+landcover_data <- na.omit(landcover_data)
+
+# Check if data exists before visualization
+if (nrow(landcover_data) == 0) {
+  print("No valid data extracted from XML files.")
+} else {
+
+  # Convert numeric data into a multi-layer raster stack
+  raster_layers <- lapply(1:nrow(landcover_data), function(i) {
+    r <- terra::rast(matrix(landcover_data$SpectralChangeDay[i], nrow = 1, ncol = 1))
+    names(r) <- as.character(landcover_data$Year[i])
+    return(r)
+  })
+  
+  # Stack all layers into a single raster object
+  raster_obj <- do.call(c, raster_layers)  # Use c() to stack SpatRaster layers
+
+  # Create a vector for the time points
+  tps <- landcover_data$Year
+
+  # Define the vertical units
+  vert_units <- "Number of  Spectral_Change"
+
+  # Call the dataPreview function with better x-axis labels
+  dataPreview(raster_obj,
+              timepoints = tps,
+              vertunits = vert_units,
+              )   
+}
