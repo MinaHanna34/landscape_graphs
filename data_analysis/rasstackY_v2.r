@@ -5,59 +5,55 @@ library(timeseriesTrajectories)
 
 # Define file paths for the 5-year data
 file_paths <- c(
-  "C:/Users/minat/Downloads/Graphs/area_of_interest/Annual_NLCD_LndCov_1990_CU_C1V0_8XkLUMJmy16Ri8RUrAqH.tiff",
-  "C:/Users/minat/Downloads/Graphs/area_of_interest/Annual_NLCD_LndCov_1996_CU_C1V0_8XkLUMJmy16Ri8RUrAqH.tiff",
-  "C:/Users/minat/Downloads/Graphs/area_of_interest/Annual_NLCD_LndCov_2004_CU_C1V0_8XkLUMJmy16Ri8RUrAqH.tiff",
+  "C:/Users/minat/Downloads/Graphs/area_of_interest/Annual_NLCD_LndCov_1985_CU_C1V0_8XkLUMJmy16Ri8RUrAqH.tiff",
+  "C:/Users/minat/Downloads/Graphs/area_of_interest/Annual_NLCD_LndCov_2000_CU_C1V0_8XkLUMJmy16Ri8RUrAqH.tiff",
   "C:/Users/minat/Downloads/Graphs/area_of_interest/Annual_NLCD_LndCov_2010_CU_C1V0_8XkLUMJmy16Ri8RUrAqH.tiff",
+  "C:/Users/minat/Downloads/Graphs/area_of_interest/Annual_NLCD_LndCov_2015_CU_C1V0_8XkLUMJmy16Ri8RUrAqH.tiff",
   "C:/Users/minat/Downloads/Graphs/area_of_interest/Annual_NLCD_LndCov_2023_CU_C1V0_8XkLUMJmy16Ri8RUrAqH.tiff"
 )
 
-# Initialize lists to store min and max values
-years <- c(1990, 1996, 2004, 2010, 2023)
-min_values <- numeric(length(file_paths))
-max_values <- numeric(length(file_paths))
-
-# Read and process each raster file
-for (i in seq_along(file_paths)) {
-  ras <- rast(file_paths[i])  # Load raster file
-  min_values[i] <- min(values(ras), na.rm = TRUE)  # Get min value
-  max_values[i] <- max(values(ras), na.rm = TRUE)  # Get max value
-}
-
-# Print extracted min and max values
-min_max_data <- data.frame(Year = years, Min = min_values, Max = max_values)
-print(min_max_data)
-
-# Plot min and max values over time
-plot(years, min_values, type = "o", col = "blue", ylim = range(c(min_values, max_values)),
-     xlab = "Year", ylab = "Value", main = "Minimum and Maximum Values Over Time",
-     pch = 16, lwd = 2)
-lines(years, max_values, type = "o", col = "red", pch = 16, lwd = 2)
-legend("topright", legend = c("Min Values", "Max Values"), col = c("blue", "red"), lwd = 2, pch = 16)
+# Define the correct years
+years <- c(1985, 2000, 2010, 2015, 2023)
 
 # Read the raster files as a SpatRaster stack
 rasstackY <- rast(file_paths)
 
-# Print raster stack details
-print(rasstackY)
+# Define NLCD classification values and corresponding colors (from the official NLCD scheme)
+nlcd_values <- c(11, 12, 21, 22, 23, 24, 31, 41, 42, 43, 52, 71, 72, 73, 74, 81, 82, 90, 95)
+nlcd_classes <- c("Open Water (11)", "Perennial Ice/Snow (12)", "Developed, Open Space (21)", 
+                  "Developed, Low Intensity (22)", "Developed, Medium Intensity (23)", 
+                  "Developed, High Intensity (24)", "Barren Land (31)", "Deciduous Forest (41)", 
+                  "Evergreen Forest (42)", "Mixed Forest (43)", "Shrub/Scrub (52)", 
+                  "Grasslands/Herbaceous (71)", "Sedge/Herbaceous (72)", "Lichens (73)", 
+                  "Moss (74)", "Pasture/Hay (81)", "Cultivated Crops (82)", "Woody Wetlands (90)", 
+                  "Emergent Herbaceous Wetlands (95)")
 
-# Visualize the original raster stack
-plot(rasstackY, main = "Original Raster Data (5-Year Time Series)")
+nlcd_colors <- c("#466B9F", "#D1DEF8", "#DEC4C4", "#D89382", "#ED0000", "#AA0000", 
+                 "#B2ADA3", "#68AA63", "#1C6330", "#B5C98E", "#CCBA7C", "#E3E3C2",
+                 "#DBD83E", "#C2C1C0", "#DCD939", "#A58C30", "#FFCC99", "#C8E6F8", "#64B3E8")
 
-# Create a data frame for reclassification 
-reclass_df <- data.frame(from = c(1))
+# Ensure correct color assignment by mapping values
+color_map <- setNames(nlcd_colors, as.character(nlcd_values))
 
-# Apply classification to the raster stack
-rasstackY_v2 <- classify(rasstackY, reclass_df, include.lowest = TRUE)
+# Adjust figure layout to fit 6 slots (5 maps + 1 empty for legend)
+par(mfrow = c(2, 3), mar = c(4, 4, 2, 4))  # Adjust right margin
 
-# Visualize the reclassified raster data for each time step
-par(mfrow = c(2, 3))  # Set up a 2-row, 3-column layout for multiple plots
-for (i in 1:nlyr(rasstackY_v2)) {
-  plot(rasstackY_v2[[i]], main = paste("Year", years[i]))
+# Plot each raster in its correct year position
+for (i in 1:nlyr(rasstackY)) {
+  plot(rasstackY[[i]], main = paste("Year", years[i]), 
+       col = color_map[as.character(unique(values(rasstackY[[i]])))])
 }
 
-# Reset the plotting layout
-par(mfrow = c(1, 1))
+# Add an **empty plot** in the 6th position for the legend
+plot.new()
 
-# Alternative: Summary of raster values instead of trajSummary()
-print(summary(rasstackY_v2))
+# Move the legend inside the empty plot
+par(xpd = TRUE)
+legend("center", legend = nlcd_classes, fill = nlcd_colors, 
+       title = "NLCD Land Cover", cex = 0.9, bty = "n")
+
+# Reset plotting layout
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1)
+
+# Print summary of raster values
+print(summary(rasstackY))
